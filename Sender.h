@@ -12,11 +12,10 @@ namespace DataFrame
 
 	public:
 
-		Sender()
+		static void run()
 		{
-
+			std::cout << "sender";
 		}
-
 
 	};
 }
