@@ -1,24 +1,13 @@
 #include <iostream>
-#include <cstring>
-#include <vector>
-#include "HandleErrors.h"
+#include "Module.h"
 
-struct Frame {
-    char sync1[8];
-    char sync2[8];
-    char checksum[4];
-};
 
 int main(int argc, char **argv) {
 
-    if(argc != 6) {
+	DataFrame::Module* _data_frame = new DataFrame::Module();
+	_data_frame->bootstrap(argc, argv);
 
-        return EXIT_FAILURE;
-    }
-    struct Frame *frame = (Frame *) malloc(sizeof(Frame));
+	delete _data_frame;
 
-    memcpy(frame->sync1, "dcc023c2", sizeof(frame->sync1));
-    memcpy(frame->sync2, "dcc023c2", sizeof(frame->sync2));
-
-    return 0;
+    return EXIT_SUCCESS;
 }

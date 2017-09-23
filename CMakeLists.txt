@@ -3,7 +3,6 @@ project(data_frame)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(SOURCE_FILES HandleErrors.h)
-set(HANDLE_ERRORS_FILES main.cpp)
+set(SOURCE_FILES main.cpp HandleErrors.h Sender.h Module.h Receiver.h)
 
-add_executable(data_frame ${SOURCE_FILES} ${HANDLE_ERRORS_FILES})
+add_executable(data_frame ${SOURCE_FILES})
