@@ -49,9 +49,6 @@ namespace DataFrame
 		std::thread _th_recv;
 		std::thread _th_sender;
 
-		std::unique_ptr<std::filebuf> file_in = nullptr;
-		std::unique_ptr<std::filebuf> file_out = nullptr;
-
 		struct {
 			std::vector<std::string> params = {};
 			short size;
@@ -62,17 +59,8 @@ namespace DataFrame
 		void bootstrap()
 		{
 			this->checkParams();
-
-			std::ifstream is;
-			file_in.reset(is.rdbuf());
-			file_in.get()->open(_params.params[1].c_str(), std::ios::in);
-
-			std::ifstream os;
-			file_out.reset(os.rdbuf());
-			file_out.get()->open(_params.params[2].c_str(), std::ios::out | std::ios::trunc);
-
-			this->_th_recv   = std::thread(Receiver::run);
-			this->_th_sender = std::thread(Sender::run);
+			this->_th_recv   = std::thread(Receiver::run, _params.params);
+			this->_th_sender = std::thread(Sender::run, _params.params);
 		}
 
 	private:

@@ -12,8 +12,14 @@ namespace DataFrame
 
 	public:
 
-		static void run()
+		static void run(std::vector<std::string> params)
 		{
+			std::ifstream is;
+			is.open(params[1].c_str(), std::ios::in);
+
+
+
+			is.close();
 			std::cout << "sender";
 		}
 

@@ -4,6 +4,7 @@
 
 #ifndef DATA_FRAME_RECEIVER_H
 #define DATA_FRAME_RECEIVER_H
+
 namespace DataFrame
 {
 	class Receiver
@@ -11,8 +12,14 @@ namespace DataFrame
 
 	public:
 
-		static void run()
+		static void run(std::vector<std::string> params)
 		{
+			std::ofstream os;
+			os.open(params[2].c_str(), std::ios::out | std::ios::trunc);
+
+
+
+			os.close();
 			std::cout << "receiver";
 		}
 
