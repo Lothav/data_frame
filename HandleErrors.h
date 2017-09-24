@@ -26,7 +26,7 @@ namespace DataFrame
         {
             if(mask == (mask | HANDLE_ERROR_TYPE_ERR_MSG)) std::cout << "ERR: ";
             if(mask == (mask | HANDLE_ERROR_TYPE_PARAMS_SIZE)) printParamsSize();
-			if(mask == (mask | HANDLE_ERROR_TYPE_THROW_RUNTIME_ERROR)) throw std::runtime_error("Runtime error!");
+			if(mask == (mask | HANDLE_ERROR_TYPE_THROW_RUNTIME_ERROR)) throw std::exception();
 		}
 
     private:
