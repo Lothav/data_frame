@@ -20,7 +20,7 @@ int main(int argc, char **argv)
 {
 	// Scoped DataFrame Module
 	{
-		std::unique_ptr<DataFrame::Module> _data_frame(new DataFrame::Module());
+		std::unique_ptr<DataFrame::Module> _data_frame(new DataFrame::Module(static_cast<short>(argc), argv));
 		_data_frame.get()->bootstrap();
 	}
 

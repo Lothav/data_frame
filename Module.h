@@ -6,13 +6,13 @@
 #define DATA_FRAME_MODULE_H
 
 #include <thread>
+#include <vector>
 #include "HandleErrors.h"
 #include "Sender.h"
 #include "Receiver.h"
 
 #define FR_SYNC_EVAL 	0xDCC023C2
 #define FR_PARAMS_N 	6
-
 
 struct Frame {
 	unsigned int 	__sync_1;
@@ -29,7 +29,14 @@ namespace DataFrame
 
 	public:
 
-		Module() {}
+		Module(short size, char** params)
+		{
+			_params.size = size;
+			for (short i = 0; i < size; i++) {
+				_params.params.push_back( std::string(params[i]) );
+			}
+		}
+
 		~Module()
 		{
 			_th_recv.join();
@@ -41,11 +48,16 @@ namespace DataFrame
 		std::thread _th_recv;
 		std::thread _th_sender;
 
+		struct {
+			std::vector<std::string> params = {};
+			short size;
+		} _params = {};
+
 	public:
 
-		void checkParams(int argc, char **argv)
+		void checkParams()
 		{
-			if(argc != FR_PARAMS_N) {
+			if(_params.size != FR_PARAMS_N) {
 				this->presentErrors(HANDLE_ERROR_TYPE_ERR_MSG | HANDLE_ERROR_TYPE_PARAMS_SIZE);
 			}
 		}
