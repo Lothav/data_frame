@@ -64,6 +64,7 @@ namespace DataFrame
 
 		void bootstrap()
 		{
+			this->checkParams();
 			this->_th_recv   = std::thread(Receiver::run);
 			this->_th_sender = std::thread(Sender::run);
 		}
