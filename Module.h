@@ -59,8 +59,12 @@ namespace DataFrame
 		void bootstrap()
 		{
 			this->checkParams();
-			this->_th_recv   = std::thread(Receiver::run, _params.params);
-			this->_th_sender = std::thread(Sender::run, _params.params);
+			try {
+				this->_th_recv   = std::thread(Receiver::run, _params.params);
+				this->_th_sender = std::thread(Sender::run, _params.params);
+			} catch (std::runtime_error &ex) {
+				std::cerr << ex.what();
+			}
 		}
 
 	private:
