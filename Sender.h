@@ -14,16 +14,15 @@ namespace DataFrame
 
 	public:
 
-		Sender(std::vector<std::string> params) : Socket(DF_SOCKET_TYPE_SENDER) {
+		Sender(std::vector<std::string> params) : Socket(DF_SOCKET_TYPE_SENDER)
+		{
 			this->params = params;
 		}
 
 		void run()
 		{
-
 			int s = socket(AF_INET, SOCK_STREAM, 0);
-			if(-1 == s)
-				throw std::runtime_error("Error on start socket");
+			if(-1 == s) throw std::runtime_error("Sender: Error on start socket");
 
 			struct sockaddr_in antelope;
 			char *some_addr;
@@ -31,12 +30,13 @@ namespace DataFrame
 			struct sockaddr_in dst = {};
 			dst.sin_family 	= AF_INET;
 			dst.sin_port 	= static_cast<uint16_t>(std::stoi(params[4].c_str()));
-			inet_aton(params[4].c_str(), &dst.sin_addr);
+			dst.sin_addr.s_addr =INADDR_ANY;
+			//inet_aton(params[3].c_str(), &dst.sin_addr);
 
 			struct sockaddr *sa_dst = (struct sockaddr *)&dst;
 
 			while( connect(s, sa_dst, sizeof(dst)) ){
-				std::cout << "Sender: Fail to connect (Server is Down?). Trying again in 3 sec..." << std::endl;
+				std::cout << "Sender: Fail to connect (" << params[4].c_str() << ":" << params[4].c_str() << " is down?). Trying again in 3 sec..." << std::endl;
 				sleep(3);
 			}
 
