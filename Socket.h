@@ -46,7 +46,7 @@ namespace DataFrame
 
 		void communicate(int _socket)
 		{
-			char buffer[3];
+			char buffer[4] = "abc";
 			int counter;
 
 			_receive = std::thread(DataFrame::Socket::Receive, _socket, buffer, params[2]);
@@ -58,7 +58,8 @@ namespace DataFrame
 			std::ofstream os;
 			os.open(out_path.c_str(), std::ios::out | std::ios::trunc);
 
-			recv( c_socket, buffer, 2, MSG_WAITALL );
+			recv( c_socket, buffer, 4, MSG_WAITALL );
+			std::cout << buffer << std::endl;
 			os.close();
 		}
 
