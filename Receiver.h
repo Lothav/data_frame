@@ -23,12 +23,10 @@ namespace DataFrame
 
 		void run()
 		{
-			std::ofstream 			os;
 			socklen_t 				clilen;
 			uint16_t 				p_number;
 			int 					sock, c_socket;
 
-			os.open(params[2].c_str(), std::ios::out | std::ios::trunc);
 
 			sock = socket(AF_INET, SOCK_STREAM, 0);
 			if (sock < 0) {
@@ -54,8 +52,6 @@ namespace DataFrame
 				close(c_socket);
 				break;
 			}
-
-			os.close();
 		}
 
 	};

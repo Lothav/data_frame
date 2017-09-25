@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <memory.h>
+#include <arpa/inet.h>
 
 #define	DF_SOCKET_TYPE_RECEIVER "passivo"
 #define	DF_SOCKET_TYPE_SENDER 	"ativo"
@@ -48,19 +49,27 @@ namespace DataFrame
 			char buffer[3];
 			int counter;
 
-			_receive = std::thread(DataFrame::Socket::Receive, _socket, buffer);
-			_send 	 = std::thread(DataFrame::Socket::Send, _socket, &counter);
-
+			_receive = std::thread(DataFrame::Socket::Receive, _socket, buffer, params[2]);
+			_send 	 = std::thread(DataFrame::Socket::Send, _socket, &counter, params[1]);
 		}
 
-		static void Receive(int c_socket, char* buffer)
+		static void Receive(int c_socket, char* buffer, std::string out_path)
 		{
+			std::ofstream os;
+			os.open(out_path.c_str(), std::ios::out | std::ios::trunc);
+
 			recv( c_socket, buffer, 2, MSG_WAITALL );
+			os.close();
 		}
 
-		static void Send(int c_socket, int* counter_hs)
+		static void Send(int c_socket, int* counter_hs, std::string in_path)
 		{
+			std::ifstream is;
+			is.open(in_path.c_str(), std::ios::in);
+
 			send( c_socket, counter_hs, 4, 0 );
+
+			is.close();
 		}
 
 	};

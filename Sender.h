@@ -5,7 +5,6 @@
 #ifndef DATA_FRAME_SENDER_H
 #define DATA_FRAME_SENDER_H
 
-#include <arpa/inet.h>
 #include "Socket.h"
 
 namespace DataFrame
@@ -21,8 +20,6 @@ namespace DataFrame
 
 		void run()
 		{
-			std::ifstream is;
-			is.open(params[1].c_str(), std::ios::in);
 
 			int s = socket(AF_INET, SOCK_STREAM, 0);
 			if(-1 == s)
@@ -32,19 +29,20 @@ namespace DataFrame
 			char *some_addr;
 
 			struct sockaddr_in dst = {};
-			dst.sin_family 	=  AF_INET;
-			dst.sin_port 	=  static_cast<uint16_t>(std::stoi(params[4].c_str()));
+			dst.sin_family 	= AF_INET;
+			dst.sin_port 	= static_cast<uint16_t>(std::stoi(params[4].c_str()));
 			inet_aton(params[4].c_str(), &dst.sin_addr);
 
 			struct sockaddr *sa_dst = (struct sockaddr *)&dst;
 
-			if(connect(s, sa_dst, sizeof(dst)))
-				throw std::runtime_error("Sender: Fail to connect");
+			while( connect(s, sa_dst, sizeof(dst)) ){
+				std::cout << "Sender: Fail to connect (Server is Down?). Trying again in 3 sec..." << std::endl;
+				sleep(3);
+			}
+
 			this->communicate(s);
 
 			close(s);
-
-			is.close();
 		}
 
 	};
