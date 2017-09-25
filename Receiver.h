@@ -23,9 +23,9 @@ namespace DataFrame
 
 		void run()
 		{
-			socklen_t 				clilen;
-			uint16_t 				p_number;
-			int 					sock, c_socket;
+			socklen_t 		clilen;
+			uint16_t 		p_number;
+			int 			sock, c_socket;
 
 			sock = socket(AF_INET, SOCK_STREAM, 0);
 			if (sock < 0) {
@@ -33,9 +33,9 @@ namespace DataFrame
 			}
 
 			struct sockaddr_in 	serv_addr;
-			serv_addr.sin_family = AF_INET;
-			serv_addr.sin_port   = static_cast<uint16_t>(std::stoi(params[4].c_str()));
-			serv_addr.sin_addr.s_addr = INADDR_ANY;
+			serv_addr.sin_family 		= AF_INET;
+			serv_addr.sin_port   		= htons(static_cast<uint16_t>(std::stoi(params[4].c_str())));
+			serv_addr.sin_addr.s_addr 	= INADDR_ANY;
 			// /inet_aton(params[3].c_str(), &serv_addr.sin_addr);
 
 			while (bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {

@@ -12,16 +12,7 @@
 #include "Sender.h"
 #include "Receiver.h"
 
-#define FR_SYNC_EVAL 	0xDCC023C2
-#define FR_PARAMS_N 	6
-
-struct Frame {
-	unsigned int 	__sync_1;
-	unsigned int 	__sync_2;
-	short 			chksum;
-	short 			length;
-	char 			resvr[2];
-};
+#define FR_PARAMS_N 6
 
 namespace DataFrame
 {

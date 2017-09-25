@@ -28,20 +28,18 @@ namespace DataFrame
 			char *some_addr;
 
 			struct sockaddr_in dst = {};
-			dst.sin_family 	= AF_INET;
-			dst.sin_port 	= static_cast<uint16_t>(std::stoi(params[4].c_str()));
-			dst.sin_addr.s_addr =INADDR_ANY;
+			dst.sin_family 		= AF_INET;
+			dst.sin_port 		= htons(static_cast<uint16_t>(std::stoi(params[4].c_str())));
+			dst.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 			//inet_aton(params[3].c_str(), &dst.sin_addr);
 
 			struct sockaddr *sa_dst = (struct sockaddr *)&dst;
-
 			while( connect(s, sa_dst, sizeof(dst)) ){
-				std::cout << "Sender: Fail to connect (" << params[4].c_str() << ":" << params[4].c_str() << " is down?). Trying again in 3 sec..." << std::endl;
+				std::cout << "Sender: Fail to connect (" << params[3].c_str() << ":" << params[4].c_str() << " is down?). Trying again in 3 sec..." << std::endl;
 				sleep(3);
 			}
 
 			this->communicate(s);
-
 			close(s);
 		}
 
