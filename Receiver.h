@@ -27,7 +27,6 @@ namespace DataFrame
 			socklen_t 				clilen;
 			uint16_t 				p_number;
 			int 					sock, c_socket;
-			struct sockaddr_in 		serv_addr, cli_addr;
 
 			os.open(params[2].c_str(), std::ios::out | std::ios::trunc);
 
@@ -36,16 +35,17 @@ namespace DataFrame
 				throw std::runtime_error("ERROR opening socket");
 			}
 
-			p_number = static_cast<uint16_t>(std::stoi(params[4].c_str()));
-
-			serv_addr.sin_family            = AF_INET;
-			serv_addr.sin_addr.s_addr       = static_cast<in_addr_t>(params[3].c_str());
-			serv_addr.sin_port              = htons(p_number);
+			struct sockaddr_in 	serv_addr;
+			serv_addr.sin_family = AF_INET;
+			serv_addr.sin_port   = static_cast<uint16_t>(std::stoi(params[4].c_str()));
+			inet_aton(params[4].c_str(), &serv_addr.sin_addr);
 
 			if (bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
 				throw std::runtime_error("ERROR on binding");
 
 			listen(sock, FR_MAX_REQUESTS);
+
+			struct sockaddr_in 	cli_addr;
 			clilen = sizeof(cli_addr);
 
 			while(1) {

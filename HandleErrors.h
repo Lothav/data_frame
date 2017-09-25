@@ -34,7 +34,7 @@ namespace DataFrame
 
 		void handleMode()
 		{
-			std::cout << "Mode not match. Modes supported: \"ativo\" or \"passivo\"."<< std::endl;
+			std::cout << "Mode mismatch! Modes supported: \"ativo\" or \"passivo\"."<< std::endl;
 		}
 
         void handleParamsSize()

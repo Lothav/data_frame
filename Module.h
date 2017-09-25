@@ -57,11 +57,11 @@ namespace DataFrame
 			this->checkParams();
 			try {
 				if(_params.params[5] == DF_SOCKET_TYPE_RECEIVER){
-					std::unique_ptr<Receiver> instance (new Receiver());
-					instance.get()->run(_params.params);
+					std::unique_ptr<Receiver> instance (new Receiver(_params.params));
+					instance.get()->run();
 				} else {
-					std::unique_ptr<Sender> instance (new Sender());
-					instance.get()->run(_params.params);
+					std::unique_ptr<Sender> instance (new Sender(_params.params));
+					instance.get()->run();
 				}
 			} catch (std::runtime_error &ex) {
 				std::cerr << ex.what();
@@ -78,7 +78,7 @@ namespace DataFrame
 				errors |= HANDLE_ERROR_TYPE_ERR_MSG | HANDLE_ERROR_TYPE_PARAMS_SIZE | HANDLE_ERROR_TYPE_THROW_RUNTIME_ERROR;
 
 			if(_params.params[5] != DF_SOCKET_TYPE_RECEIVER && _params.params[5] != DF_SOCKET_TYPE_SENDER)
-				errors |= HANDLE_ERROR_TYPE_MODE_NOT_MATCH;
+				errors |= HANDLE_ERROR_TYPE_MODE_NOT_MATCH | HANDLE_ERROR_TYPE_THROW_RUNTIME_ERROR;
 
 			if(errors) this->presentErrors(errors);
 		}
