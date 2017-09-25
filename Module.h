@@ -40,14 +40,10 @@ namespace DataFrame
 
 		~Module()
 		{
-			_th_recv.join();
-			_th_sender.join();
+
 		}
 
 	private:
-
-		std::thread _th_recv;
-		std::thread _th_sender;
 
 		struct {
 			std::vector<std::string> params = {};
@@ -60,8 +56,13 @@ namespace DataFrame
 		{
 			this->checkParams();
 			try {
-				this->_th_recv   = std::thread(Receiver::run, _params.params);
-				this->_th_sender = std::thread(Sender::run, _params.params);
+				if(_params.params[5] == DF_SOCKET_TYPE_RECEIVER){
+					std::unique_ptr<Receiver> instance (new Receiver());
+					instance.get()->run(_params.params);
+				} else {
+					std::unique_ptr<Sender> instance (new Sender());
+					instance.get()->run(_params.params);
+				}
 			} catch (std::runtime_error &ex) {
 				std::cerr << ex.what();
 			}
@@ -71,8 +72,15 @@ namespace DataFrame
 
 		void checkParams()
 		{
+			unsigned int errors = 0; //5733961
+
 			if(_params.size != FR_PARAMS_N)
-				this->presentErrors(HANDLE_ERROR_TYPE_ERR_MSG | HANDLE_ERROR_TYPE_PARAMS_SIZE | HANDLE_ERROR_TYPE_THROW_RUNTIME_ERROR);
+				errors |= HANDLE_ERROR_TYPE_ERR_MSG | HANDLE_ERROR_TYPE_PARAMS_SIZE | HANDLE_ERROR_TYPE_THROW_RUNTIME_ERROR;
+
+			if(_params.params[5] != DF_SOCKET_TYPE_RECEIVER && _params.params[5] != DF_SOCKET_TYPE_SENDER)
+				errors |= HANDLE_ERROR_TYPE_MODE_NOT_MATCH;
+
+			if(errors) this->presentErrors(errors);
 		}
 
 	};
