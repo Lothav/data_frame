@@ -41,14 +41,11 @@ namespace DataFrame
 
 		~Socket()
 		{
-            if(_mode==DF_SOCKET_TYPE_SENDER) {
-
-                _send.join();
-            }else{
-
-                _receive.join();
-            }
-		}
+            _send.join();
+            _receive.join();
+            close(_socket_recv);
+            close(_socket_sender);
+        }
 
 		std::vector<std::string> params;
 
@@ -59,16 +56,18 @@ namespace DataFrame
 		std::thread _receive;
 		std::thread _send;
 
+    protected:
+
+        int _socket_sender;
+        int _socket_recv;
+
 	public:
 
 		void communicate(int _socket)
 		{
 			int counter;
-            if(_mode==DF_SOCKET_TYPE_SENDER){
-                _send 	 = std::thread(DataFrame::Socket::Send, _socket, params[1]);
-            }else{
-                _receive = std::thread(DataFrame::Socket::Receive, _socket, params[2]);
-            }
+            _send 	 = std::thread(DataFrame::Socket::Send, _socket, params[1]);
+            _receive = std::thread(DataFrame::Socket::Receive, _socket, params[2]);
 		}
 
 		static void Receive(int c_socket, std::string out_path)
@@ -78,7 +77,7 @@ namespace DataFrame
 
             char* buffer = (char *) malloc(250);
 
-            while(recv( c_socket, buffer, 250, MSG_WAITALL) == -1) {
+            while(recv( c_socket, buffer, 250, 0) == -1) {
                 std::cout << "Receive: Fail to receive data (socket " << c_socket << "). Trying again in 3 sec..." << std::endl;
                 sleep(3);
             }
@@ -108,12 +107,7 @@ namespace DataFrame
                 memcpy(send_buffer, &frame, FR_ST_SIZE_PAD);
                 memcpy(send_buffer + size, s_temp.c_str(), sizeof(_buffer.str()));
 
-                char a[10] = "Luiz Otav";
-
-                uint32_t as = 234;
-                uint32_t counter_hs = htonl(as);
-
-                while (send( c_socket, &counter_hs, sizeof(uint32_t), 0 ) == -1){
+                while (send( c_socket, &send_buffer, size, 0 ) == -1){
                     std::cout << "Send: Fail to send data (socket " << c_socket << "). Trying again in 3 sec..." << std::endl;
                     sleep(3);
                 }

@@ -27,8 +27,8 @@ namespace DataFrame
 			uint16_t 		p_number;
 			int 			sock, c_socket;
 
-			sock = socket(AF_INET, SOCK_STREAM, 0);
-			if (sock < 0) {
+			_socket_recv = socket(AF_INET, SOCK_STREAM, 0);
+			if (_socket_recv < 0) {
 				throw std::runtime_error("ERROR opening socket");
 			}
 
@@ -38,20 +38,19 @@ namespace DataFrame
 			serv_addr.sin_addr.s_addr 	= INADDR_ANY;
 			// /inet_aton(params[3].c_str(), &serv_addr.sin_addr);
 
-			while (bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+			while (bind(_socket_recv, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
 				std::cout << "Receiver: Fail to bind (" << params[3].c_str() << ":" << params[4].c_str() << " already binded?). Trying again in 3 sec..." << std::endl;
 				sleep(3);
 			}
 
-			listen(sock, FR_MAX_REQUESTS);
+			listen(_socket_recv, FR_MAX_REQUESTS);
 
 			struct sockaddr_in 	cli_addr;
 			clilen = sizeof(cli_addr);
 
 			while(1) {
-				c_socket = accept(sock, (struct sockaddr *)&cli_addr, &clilen);
+				c_socket = accept(_socket_recv, (struct sockaddr *)&cli_addr, &clilen);
 				this->communicate(c_socket);
-				close(c_socket);
 				break;
 			}
 		}
