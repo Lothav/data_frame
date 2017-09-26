@@ -40,7 +40,7 @@ namespace DataFrame
 
 			while (bind(_socket_recv, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
 				std::cout << "Receiver: Fail to bind (" << params[3].c_str() << ":" << params[4].c_str() << " already binded?). Trying again in 3 sec..." << std::endl;
-				sleep(3);
+				//sleep(3);
 			}
 
 			listen(_socket_recv, FR_MAX_REQUESTS);

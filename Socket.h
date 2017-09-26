@@ -41,10 +41,13 @@ namespace DataFrame
 
 		~Socket()
 		{
-            _send.join();
-            _receive.join();
-            close(_socket_recv);
-            close(_socket_sender);
+            if(_mode == DF_SOCKET_TYPE_RECEIVER){
+                _receive.join();
+                close(_socket_recv);
+            }else{
+                _send.join();
+                close(_socket_sender);
+            }
         }
 
 		std::vector<std::string> params;
@@ -66,8 +69,11 @@ namespace DataFrame
 		void communicate(int _socket)
 		{
 			int counter;
-            _send 	 = std::thread(DataFrame::Socket::Send, _socket, params[1]);
-            _receive = std::thread(DataFrame::Socket::Receive, _socket, params[2]);
+            if(_mode == DF_SOCKET_TYPE_RECEIVER){
+                _receive = std::thread(DataFrame::Socket::Receive, _socket, params[2]);
+            }else{
+                _send 	 = std::thread(DataFrame::Socket::Send, _socket, params[1]);
+            }
 		}
 
 		static void Receive(int c_socket, std::string out_path)
@@ -92,6 +98,7 @@ namespace DataFrame
 
 			if(is.is_open()) {
 				std::stringstream _buffer;
+				_buffer << is.rdbuf();
                 std::string s_temp(_buffer.str());
 
 				struct Frame frame = {};
@@ -105,13 +112,22 @@ namespace DataFrame
                 char* send_buffer = (char *)malloc(size*2);
 
                 memcpy(send_buffer, &frame, FR_ST_SIZE_PAD);
-                memcpy(send_buffer + size, s_temp.c_str(), sizeof(_buffer.str()));
+                memcpy(send_buffer+FR_ST_SIZE_PAD, s_temp.c_str(), sizeof(_buffer.str()));
 
+                struct Frame frame2 = {};
+                memcpy(&frame2, send_buffer, FR_ST_SIZE_PAD);
+
+                char* frame3 = (char *)malloc(sizeof(_buffer.str())+1);
+                memcpy(frame3, send_buffer + FR_ST_SIZE_PAD, sizeof(_buffer.str()));
+
+				std::string asg(frame3);
+
+                std::cout<< *frame3 << std::endl;
                 while (send( c_socket, &send_buffer, size, 0 ) == -1){
                     std::cout << "Send: Fail to send data (socket " << c_socket << "). Trying again in 3 sec..." << std::endl;
                     sleep(3);
                 }
-                free(send_buffer);
+                //free(send_buffer);
 			}
 
 			is.close();
