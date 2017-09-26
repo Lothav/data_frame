@@ -21,6 +21,8 @@ namespace DataFrame
 			this->params = 	params;
 		}
 
+        ~Receiver() {}
+
 		void run()
 		{
 			socklen_t 		clilen;
@@ -32,6 +34,11 @@ namespace DataFrame
 				throw std::runtime_error("ERROR opening socket");
 			}
 
+            int size = 1;
+
+            if (setsockopt(_socket_recv, SOL_SOCKET, SO_REUSEADDR, &size, sizeof(int)) < 0)
+                ("setsockopt(SO_REUSEADDR) failed");
+
 			struct sockaddr_in 	serv_addr;
 			serv_addr.sin_family 		= AF_INET;
 			serv_addr.sin_port   		= htons(static_cast<uint16_t>(std::stoi(params[4].c_str())));
@@ -40,7 +47,7 @@ namespace DataFrame
 
 			while (bind(_socket_recv, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
 				std::cout << "Receiver: Fail to bind (" << params[3].c_str() << ":" << params[4].c_str() << " already binded?). Trying again in 3 sec..." << std::endl;
-				//sleep(3);
+				sleep(3);
 			}
 
 			listen(_socket_recv, FR_MAX_REQUESTS);
@@ -48,11 +55,8 @@ namespace DataFrame
 			struct sockaddr_in 	cli_addr;
 			clilen = sizeof(cli_addr);
 
-			while(1) {
-				c_socket = accept(_socket_recv, (struct sockaddr *)&cli_addr, &clilen);
-				this->communicate(c_socket);
-				break;
-			}
+			c_socket = accept(_socket_recv, (struct sockaddr *)&cli_addr, &clilen);
+            this->communicate(c_socket);
 		}
 
 	};
