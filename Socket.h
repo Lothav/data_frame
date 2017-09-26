@@ -25,11 +25,11 @@
 #define FR_ST_SIZE_PAD 	    112
 
 struct Frame {
-    unsigned int 	__sync_1;
-    unsigned int 	__sync_2;
-    short 			chksum;
-    short 			length;
-    char 			resvr[2];
+    uint32_t 	__sync_1;
+    uint32_t 	__sync_2;
+    uint16_t 	chksum;
+    uint16_t 	length;
+    uint16_t    resvr;
 }__attribute__((packed));
 
 namespace DataFrame
@@ -77,25 +77,30 @@ namespace DataFrame
 
         static void Receive(int c_socket, std::string out_path)
         {
-            size_t max_size = static_cast<size_t>(std::pow(2, 16)) - 1;
-            void* buffer = malloc(max_size);
-            ssize_t rec_size = recv( c_socket, buffer, max_size, 0);
-            size_t data_size = static_cast<size_t>(rec_size - FR_ST_SIZE_PAD);
+            size_t  max_size  = static_cast<size_t>(std::pow(2, 16)) - 1;
+            void*   buffer    = malloc(max_size);
 
-            while(rec_size == -1) {
+            ssize_t rec_size;
+            if((rec_size = recv(c_socket, buffer, max_size, 0)) == -1) {
                 std::cout << "Receive: Fail to receive data (socket " << c_socket << "). Trying again in 3 sec..." << std::endl;
                 sleep(3);
             }
+
+            size_t  data_size = static_cast<size_t>(rec_size-FR_ST_SIZE_PAD);
 
             if(buffer) {
                 struct Frame header = {};
                 memcpy(&header, buffer, FR_ST_SIZE_PAD);
 
+                if(header.length == 0) {
+                    std::cout << "Field length eq zero" << std::endl;
+                    return;
+                }
                 char data[ data_size+1 ];
-                memcpy(data, buffer + FR_ST_SIZE_PAD, data_size);
+                memcpy(data, buffer+FR_ST_SIZE_PAD, data_size);
 
                 std::ofstream os (out_path.c_str(), std::ios::binary | std::ios::trunc);
-                if(os && os.is_open()) {
+                if(os.is_open()) {
                     os.write(data, strlen(data));
                     os.close();
                 }
@@ -112,19 +117,23 @@ namespace DataFrame
                 _buffer << is.rdbuf();
                 is.close();
 
-                std::string s_temp(_buffer.str());
+                std::string s_temp( _buffer.str() );
 
                 struct Frame frame = {};
-                frame.__sync_1 	= FR_SYNC_EVAL;
-                frame.__sync_2 	= FR_SYNC_EVAL;
-                frame.length 	= sizeof(_buffer.str());
-                memset(&frame.resvr, 0, sizeof(frame.resvr));
+                frame.__sync_1 	= htonl(FR_SYNC_EVAL);
+                frame.__sync_2 	= htonl(FR_SYNC_EVAL);
+                frame.length 	= htons(sizeof(_buffer.str()));
+                frame.chksum 	= htons(0);
+                frame.resvr 	= htons(0);
 
-                size_t size = static_cast<size_t>(FR_ST_SIZE_PAD + frame.length);
-                char* send_buffer = (char *)malloc(size);
+                size_t size     = static_cast<size_t>(FR_ST_SIZE_PAD + frame.length);
+                unsigned char* send_buffer = (unsigned char *)malloc(size);
 
                 memcpy(send_buffer, &frame, FR_ST_SIZE_PAD);
                 memcpy(send_buffer+FR_ST_SIZE_PAD, s_temp.c_str(), sizeof(_buffer.str()));
+
+                uint32_t adler32 = Socket::adler32(send_buffer, FR_ST_SIZE_PAD);
+                frame.chksum = static_cast<uint16_t>(adler32);
 
                 while (send( c_socket, send_buffer, size, 0 ) == -1){
                     std::cout << "Send: Fail to send data (socket " << c_socket << "). Trying again in 3 sec..." << std::endl;
@@ -132,6 +141,19 @@ namespace DataFrame
                 }
                 free(send_buffer);
             }
+        }
+
+
+        static uint32_t adler32(unsigned char *data, size_t len)
+        {
+            uint32_t a = 1, b = 0;
+            size_t index;
+            const uint32_t MOD_ADLER = 65521;
+            for (index = 0; index < len; ++index) {
+                a = (a + data[index]) % MOD_ADLER;
+                b = (b + a) % MOD_ADLER;
+            }
+            return (b << 16) | a;
         }
     };
 }
