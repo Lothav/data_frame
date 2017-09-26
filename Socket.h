@@ -91,16 +91,14 @@ namespace DataFrame
                 struct Frame header = {};
                 memcpy(&header, buffer, FR_ST_SIZE_PAD);
 
-                char * data = (char *)malloc(data_size);
+                char data[ data_size+1 ];
                 memcpy(data, buffer + FR_ST_SIZE_PAD, data_size);
 
                 std::ofstream os (out_path.c_str(), std::ios::binary | std::ios::trunc);
                 if(os && os.is_open()) {
-                    os.write(data, data_size);
+                    os.write(data, strlen(data));
                     os.close();
                 }
-
-                free(data);
             }
         }
 
