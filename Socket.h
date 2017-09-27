@@ -24,6 +24,9 @@
 #define FR_SYNC_EVAL 	    0xDCC023C2
 #define FR_ST_SIZE_PAD 	    112
 
+#define FR_CHECKSUM_OFFSET  8
+#define FR_CHECKSUM_SIZE    2
+
 struct Frame {
     uint32_t 	__sync_1;
     uint32_t 	__sync_2;
@@ -86,25 +89,35 @@ namespace DataFrame
                 sleep(3);
             }
 
-            size_t  data_size = static_cast<size_t>(rec_size-FR_ST_SIZE_PAD);
+            struct Frame header = {};
+            memcpy(&header, buffer, FR_ST_SIZE_PAD);
 
-            if(buffer) {
-                struct Frame header = {};
-                memcpy(&header, buffer, FR_ST_SIZE_PAD);
-
-                if(header.length == 0) {
-                    std::cout << "Field length eq zero" << std::endl;
-                    return;
-                }
-                char data[ data_size+1 ];
-                memcpy(data, buffer+FR_ST_SIZE_PAD, data_size);
-
-                std::ofstream os (out_path.c_str(), std::ios::binary | std::ios::trunc);
-                if(os.is_open()) {
-                    os.write(data, strlen(data));
-                    os.close();
-                }
+            if(header.length == 0) {
+                std::cout << "Field length eq zero" << std::endl;
+                return;
             }
+
+            // clear checksum field
+            memset(((uint8_t *)buffer)+FR_CHECKSUM_OFFSET, 0, FR_CHECKSUM_SIZE);
+
+            uint16_t checksum16 = Socket::ip_checksum(buffer, header.length+FR_ST_SIZE_PAD);
+
+            if(checksum16 != header.chksum){
+                std::cout << "fail checksum" << std::endl;
+                return;
+            }
+
+            size_t data_size = static_cast<size_t>(rec_size-FR_ST_SIZE_PAD);
+            char data[ data_size+1 ];
+            memcpy(data, ((uint8_t *)buffer)+FR_ST_SIZE_PAD, data_size);
+
+            std::ofstream os (out_path.c_str(), std::ios::binary | std::ios::trunc);
+            if(os.is_open()) {
+                os.write(data, strlen(data));
+                os.close();
+            }
+
+            free(buffer);
         }
 
         static void Send(int c_socket, std::string in_path)
@@ -119,21 +132,22 @@ namespace DataFrame
 
                 std::string s_temp( _buffer.str() );
 
-                struct Frame frame = {};
-                frame.__sync_1 	= htonl(FR_SYNC_EVAL);
-                frame.__sync_2 	= htonl(FR_SYNC_EVAL);
-                frame.length 	= htons(sizeof(_buffer.str()));
-                frame.chksum 	= htons(0);
-                frame.resvr 	= htons(0);
+                struct Frame frame  = {};
+                frame.__sync_1 	    = htonl(FR_SYNC_EVAL);
+                frame.__sync_2 	    = htonl(FR_SYNC_EVAL);
+                frame.length 	    = htons(sizeof(_buffer.str()));
+                frame.chksum 	    = htons(0);
+                frame.resvr 	    = htons(0);
 
-                size_t size     = static_cast<size_t>(FR_ST_SIZE_PAD + frame.length);
-                unsigned char* send_buffer = (unsigned char *)malloc(size);
+                size_t size         = static_cast<size_t>(FR_ST_SIZE_PAD + frame.length);
+                void* send_buffer   = malloc(size);
 
                 memcpy(send_buffer, &frame, FR_ST_SIZE_PAD);
-                memcpy(send_buffer+FR_ST_SIZE_PAD, s_temp.c_str(), sizeof(_buffer.str()));
+                memcpy(((uint8_t *)send_buffer)+FR_ST_SIZE_PAD, s_temp.c_str(), sizeof(_buffer.str()));
 
-                uint32_t adler32 = Socket::adler32(send_buffer, FR_ST_SIZE_PAD);
-                frame.chksum = static_cast<uint16_t>(adler32);
+                uint16_t checksum16 = Socket::ip_checksum(send_buffer, size);
+                frame.chksum = checksum16;
+                memcpy(send_buffer, &frame, FR_ST_SIZE_PAD);
 
                 while (send( c_socket, send_buffer, size, 0 ) == -1){
                     std::cout << "Send: Fail to send data (socket " << c_socket << "). Trying again in 3 sec..." << std::endl;
@@ -144,16 +158,35 @@ namespace DataFrame
         }
 
 
-        static uint32_t adler32(unsigned char *data, size_t len)
-        {
-            uint32_t a = 1, b = 0;
-            size_t index;
-            const uint32_t MOD_ADLER = 65521;
-            for (index = 0; index < len; ++index) {
-                a = (a + data[index]) % MOD_ADLER;
-                b = (b + a) % MOD_ADLER;
+        static uint16_t ip_checksum(void* vdata, size_t length) {
+            // Cast the data pointer to one that can be indexed.
+            char* data=(char*)vdata;
+
+            // Initialise the accumulator.
+            uint32_t acc=0xffff;
+
+            // Handle complete 16-bit blocks.
+            for (size_t i=0;i+1<length;i+=2) {
+                uint16_t word;
+                memcpy(&word,data+i,2);
+                acc+=ntohs(word);
+                if (acc>0xffff) {
+                    acc-=0xffff;
+                }
             }
-            return (b << 16) | a;
+
+            // Handle any partial block at the end of the data.
+            if (length&1) {
+                uint16_t word=0;
+                memcpy(&word,data+length-1,1);
+                acc+=ntohs(word);
+                if (acc>0xffff) {
+                    acc-=0xffff;
+                }
+            }
+
+            // Return the checksum in network byte order.
+            return htons(~acc);
         }
     };
 }
