@@ -37,12 +37,11 @@ namespace DataFrame
             int size = 1;
 
             if (setsockopt(_socket_recv, SOL_SOCKET, SO_REUSEADDR, &size, sizeof(int)) < 0)
-                ("setsockopt(SO_REUSEADDR) failed");
+                printf("setsockopt(SO_REUSEADDR) failed");
 
 			struct sockaddr_in 	serv_addr;
 			serv_addr.sin_family 		= AF_INET;
 			serv_addr.sin_port   		= htons(static_cast<uint16_t>(std::stoi(params[4].c_str())));
-			//serv_addr.sin_addr.s_addr 	= INADDR_ANY;
 			inet_aton(params[3].c_str(), &serv_addr.sin_addr);
 
 			while (bind(_socket_recv, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {

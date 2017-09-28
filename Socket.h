@@ -126,16 +126,18 @@ namespace DataFrame
             is.open(in_path.c_str(), std::ios::binary);
 
             if(is.is_open()) {
-                std::stringstream _buffer;
-                _buffer << is.rdbuf();
-                is.close();
+                size_t __max_size = 5;//static_cast<size_t>( pow(2, 16)-1 );
 
-                std::string s_temp( _buffer.str() );
+                char* _file_buffer = (char *) malloc(__max_size);
+                is.read(_file_buffer, __max_size);
+                size_t buffer_length = strlen(_file_buffer);
+
+                is.close();
 
                 struct Frame frame  = {};
                 frame.__sync_1 	    = htonl(FR_SYNC_EVAL);
                 frame.__sync_2 	    = htonl(FR_SYNC_EVAL);
-                frame.length 	    = htons(sizeof(_buffer.str()));
+                frame.length 	    = htons(buffer_length);
                 frame.chksum 	    = htons(0);
                 frame.resvr 	    = htons(0);
 
@@ -143,7 +145,7 @@ namespace DataFrame
                 void* send_buffer   = malloc(size);
 
                 memcpy(send_buffer, &frame, FR_ST_SIZE_PAD);
-                memcpy(((uint8_t *)send_buffer)+FR_ST_SIZE_PAD, s_temp.c_str(), sizeof(_buffer.str()));
+                memcpy(((uint8_t *)send_buffer)+FR_ST_SIZE_PAD, _file_buffer, buffer_length);
 
                 uint16_t checksum16 = Socket::ip_checksum(send_buffer, size);
                 frame.chksum = checksum16;

@@ -30,7 +30,6 @@ namespace DataFrame
 			struct sockaddr_in dst = {};
 			dst.sin_family 		= AF_INET;
 			dst.sin_port 		= htons(static_cast<uint16_t>(std::stoi(params[4].c_str())));
-			//dst.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 			inet_aton(params[3].c_str(), &dst.sin_addr);
 
 			struct sockaddr *sa_dst = (struct sockaddr *)&dst;
