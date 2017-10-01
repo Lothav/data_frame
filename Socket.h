@@ -150,9 +150,8 @@ namespace DataFrame
             std::ifstream is(in_path.c_str(), std::ios::binary);
 
             if(is.is_open()) {
-				is.seekg(0, std::ios::end);
 
-            	char* _file_buffer = new char (__max_size+1);
+            	char* _file_buffer = (char*) malloc(__max_size);
 
 				while((is.rdstate() & std::ios::eofbit) != std::ios::eofbit) {
 					is.read(_file_buffer, __max_size);
@@ -179,9 +178,9 @@ namespace DataFrame
 						sleep(3);
 					}
 				}
-				delete[] _file_buffer;
-				is.close();
+				free(_file_buffer);
             }
+			is.close();
         }
 
     };

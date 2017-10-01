@@ -29,10 +29,7 @@ namespace DataFrame
 			}
 		}
 
-		~Module()
-		{
-			std::cout<<"killing module"<<std::endl;
-		}
+		~Module() {}
 
 	private:
 

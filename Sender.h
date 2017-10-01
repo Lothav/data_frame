@@ -39,6 +39,8 @@ namespace DataFrame
 			}
 
 			this->communicate(_socket_sender);
+			sleep(50);
+			std::cout <<"byeee have a great time" << std::endl;
 		}
 
 	};
