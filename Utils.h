@@ -70,13 +70,11 @@ namespace DataFrame
 			memset(((uint8_t *)buffer)+FR_CHECKSUM_OFFSET, 0, FR_CHECKSUM_SIZE);
 
 			// calc checksum
-			uint16_t checksum16 = Utils::ip_checksum(buffer, header.length+FR_ST_SIZE_PAD);
-
-			// return match cal checksum with header checksum
-			return checksum16 == header.chksum;
+			uint16_t checksum16 = Utils::ip_checksum(buffer, ntohs(header.length)+FR_ST_SIZE_PAD);
+			return checksum16 == ntohs(header.chksum);
 		}
 
-		void static prettyBytes(char* buf, uint bytes)
+		void static prettyBytes(char* buf, ssize_t bytes)
 		{
 			const char* suffixes[7] = {"B", "KB", "MB", "GB", "TB", "PB", "EB"};
 			uint s = 0;

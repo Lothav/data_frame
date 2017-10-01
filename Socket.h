@@ -19,12 +19,6 @@
 #include <cmath>
 #include "Utils.h"
 
-enum {
-	DF_ALL_DATA_RECEIVED,
-	DF_ERROR_RECEIVE_DATA,
-	DF_TRYING_AGAIN_FEW_SECS
-};
-
 namespace DataFrame
 {
     class Socket
@@ -152,7 +146,8 @@ namespace DataFrame
                 char* _file_buffer = new char (__max_size+1);
 				void* send_buffer  = malloc(__max_size+FR_ST_SIZE_PAD);
 
-				while( is.read(_file_buffer, __max_size) && !is.eof() ) {
+				while((is.rdstate() & std::ios::eofbit) != std::ios::eofbit) {
+					is.read(_file_buffer, __max_size);
 					size_t buffer_length = static_cast<size_t>(is.gcount());
 
 					struct Frame frame  = {};
@@ -168,19 +163,16 @@ namespace DataFrame
 					memcpy(((uint8_t *)send_buffer)+FR_ST_SIZE_PAD, _file_buffer, buffer_length);
 
 					uint16_t checksum16 = Utils::ip_checksum(send_buffer, size);
-					frame.chksum = checksum16;
+					frame.chksum = htons(checksum16);
 					memcpy(send_buffer, &frame, FR_ST_SIZE_PAD);
 
 					while (send( c_socket, send_buffer, size, 0 ) == -1){
 						std::cout << "Send: Fail to send data (socket " << c_socket << "). Trying again in 3 sec..." << std::endl;
 						sleep(3);
 					}
-
 				}
-				is.close();
-
 				delete[] _file_buffer;
-                free(send_buffer);
+                //free(send_buffer);
             }
         }
 
