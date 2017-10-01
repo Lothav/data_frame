@@ -64,13 +64,13 @@ namespace DataFrame
 		}
 
 
-		static const bool checkChecksum(void* buffer, struct Frame header)
+		static const bool checkChecksum(void* buffer, struct Frame header, ssize_t rec_size)
 		{
 			// clear checksum field
 			memset(((uint8_t *)buffer)+FR_CHECKSUM_OFFSET, 0, FR_CHECKSUM_SIZE);
 
 			// calc checksum
-			uint16_t checksum16 = Utils::ip_checksum(buffer, ntohs(header.length)+FR_ST_SIZE_PAD);
+			uint16_t checksum16 = Utils::ip_checksum(buffer, rec_size);
 			return checksum16 == ntohs(header.chksum);
 		}
 
