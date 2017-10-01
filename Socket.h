@@ -57,6 +57,8 @@ namespace DataFrame
 
 		void * _buffer = nullptr;
 
+		const size_t __max_size = static_cast<size_t>(pow(2, 16)-1);
+
     protected:
 
         int _socket_sender;
@@ -68,50 +70,56 @@ namespace DataFrame
         {
             int counter;
 
-			size_t  max_size  = static_cast<size_t>(std::pow(2, 16)) - 1;
-			_buffer = malloc(max_size);
-
-			_receive = std::thread(DataFrame::Socket::Receive, _socket, params[2], _buffer, max_size);
-            _send 	 = std::thread(DataFrame::Socket::Send, _socket, params[1]);
+			_buffer = malloc(__max_size);
+			_receive = std::thread(DataFrame::Socket::Receive, _socket, params[2], _buffer, __max_size);
+            _send 	 = std::thread(DataFrame::Socket::Send, _socket, params[1], __max_size);
         }
 
-        static void Receive(int c_socket, std::string out_path, void* buffer, size_t max_size)
+        static void Receive(int c_socket, std::string out_path, void* buffer, const size_t __max_size)
         {
             ssize_t rec_size;
 
 			while(true) {
 
 				// Clear buffer
-				memset(buffer, 0, max_size);
+				memset(buffer, 0, __max_size);
 
-				if((rec_size = recv(c_socket, buffer, max_size, 0)) == -1) {
-					std::cout << "Receive: Fail to receive data (socket " << c_socket << " (err: " << errno << ") is dead?)." << std::endl;
-					std::cout << "Receiver: Trying again in 3 sec... Hit ctrl+c to cancel" << std::endl << std::endl;
+				if((rec_size = recv(c_socket, buffer, __max_size, 0)) == -1) {
+					std::cout << "Receive: Fail to receive frame (socket " << c_socket << " (err: " << errno << ") is dead?)." << std::endl;
+					std::cout << "Receive: Trying again in 3 sec... Hit ctrl+c to cancel" << std::endl << std::endl;
 					sleep(3);
 					continue;
 				}
 
 				if(rec_size == 0) {
-					std::cout << "Receive: Received data with 0B (socket " << c_socket << " is dead?)." << std::endl;
-					std::cout << "Receiver: Trying again in 3 sec... Hit ctrl+c to cancel" << std::endl << std::endl;
+					std::cout << "Receive: Received frame with 0B (socket " << c_socket << " is dead?)" << std::endl;
+					std::cout << "Receive: Trying again in 3 sec... Hit ctrl+c to cancel" << std::endl << std::endl;
 					sleep(3);
+					continue;
+				}
+
+				if(rec_size == FR_ST_SIZE_PAD){
+					std::cout << "Receive: Only header receive. There's no data." << std::endl;
+					std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel" << std::endl << std::endl;
 					continue;
 				}
 
 				char bytes_size[15];
 				Utils::prettyBytes(bytes_size, rec_size);
-				std::cout << "Receive: receiving data with " << bytes_size << " size."<< std::endl;
+				std::cout << "Receive: receiving frame with " << bytes_size << " size."<< std::endl;
 
 				struct Frame header = {};
 				memcpy(&header, buffer, FR_ST_SIZE_PAD);
 
 				if(header.length == 0) {
-					std::cout << "Field length eq zero" << std::endl;
+					std::cout << "Receive: header field 'length' eq zero. Discarding frame." << std::endl;
+					std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
 					continue;
 				}
 
 				if( !Utils::checkChecksum(buffer, header) ){
-					std::cout << "fail checksum" << std::endl;
+					std::cout << "Receive: Fail checksum. Discarding frame." << std::endl;
+					std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
 					continue;
 				}
 
@@ -130,45 +138,48 @@ namespace DataFrame
 				os.write(data, strlen(data));
 				os.close();
 				std::cout << "Receive: successful data store in " << out_path << std::endl;
-				std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl;
+				std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
 			}
         }
 
-        static void Send(int c_socket, std::string in_path)
+        static void Send(int c_socket, std::string in_path, const size_t __max_size)
         {
             std::ifstream is;
             is.open(in_path.c_str(), std::ios::binary);
 
             if(is.is_open()) {
-                size_t __max_size = 5;//static_cast<size_t>( pow(2, 16)-1 );
 
-                char* _file_buffer = (char *) malloc(__max_size);
-                is.read(_file_buffer, __max_size);
-                size_t buffer_length = strlen(_file_buffer);
+                char* _file_buffer = new char (__max_size+1);
+				void* send_buffer  = malloc(__max_size+FR_ST_SIZE_PAD);
 
-                is.close();
+				while( is.read(_file_buffer, __max_size) && !is.eof() ) {
+					size_t buffer_length = static_cast<size_t>(is.gcount());
 
-                struct Frame frame  = {};
-                frame.__sync_1 	    = htonl(FR_SYNC_EVAL);
-                frame.__sync_2 	    = htonl(FR_SYNC_EVAL);
-                frame.length 	    = htons(buffer_length);
-                frame.chksum 	    = htons(0);
-                frame.resvr 	    = htons(0);
+					struct Frame frame  = {};
+					frame.__sync_1 	    = htonl(FR_SYNC_EVAL);
+					frame.__sync_2 	    = htonl(FR_SYNC_EVAL);
+					frame.length 	    = htons(static_cast<uint16_t>(buffer_length));
+					frame.chksum 	    = htons(0);
+					frame.resvr 	    = htons(0);
 
-                size_t size         = static_cast<size_t>(FR_ST_SIZE_PAD + frame.length);
-                void* send_buffer   = malloc(size);
+					size_t size = static_cast<size_t>(FR_ST_SIZE_PAD + buffer_length);
 
-                memcpy(send_buffer, &frame, FR_ST_SIZE_PAD);
-                memcpy(((uint8_t *)send_buffer)+FR_ST_SIZE_PAD, _file_buffer, buffer_length);
+					memcpy(send_buffer, &frame, FR_ST_SIZE_PAD);
+					memcpy(((uint8_t *)send_buffer)+FR_ST_SIZE_PAD, _file_buffer, buffer_length);
 
-                uint16_t checksum16 = Utils::ip_checksum(send_buffer, size);
-                frame.chksum = checksum16;
-                memcpy(send_buffer, &frame, FR_ST_SIZE_PAD);
+					uint16_t checksum16 = Utils::ip_checksum(send_buffer, size);
+					frame.chksum = checksum16;
+					memcpy(send_buffer, &frame, FR_ST_SIZE_PAD);
 
-                while (send( c_socket, send_buffer, size, 0 ) == -1){
-                    std::cout << "Send: Fail to send data (socket " << c_socket << "). Trying again in 3 sec..." << std::endl;
-                    sleep(3);
-                }
+					while (send( c_socket, send_buffer, size, 0 ) == -1){
+						std::cout << "Send: Fail to send data (socket " << c_socket << "). Trying again in 3 sec..." << std::endl;
+						sleep(3);
+					}
+
+				}
+				is.close();
+
+				delete[] _file_buffer;
                 free(send_buffer);
             }
         }
