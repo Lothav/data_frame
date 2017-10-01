@@ -100,7 +100,7 @@ namespace DataFrame
 					continue;
 				}
 
-				if(rec_size == FR_ST_SIZE_PAD){
+				if(rec_size <= FR_ST_SIZE_PAD) {
 					std::cout << "Receive: Only header receive. There's no data." << std::endl;
 					std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel" << std::endl << std::endl;
 					continue;
@@ -131,13 +131,17 @@ namespace DataFrame
 				memcpy(data, ((uint8_t *)buffer)+FR_ST_SIZE_PAD, data_size);
 
 				// Write on file
+
+				std::cout << data;
+
 				std::ofstream os (out_path.c_str(), std::ios::binary | std::ios::app);
 				if(!os.is_open()) {
 					std::cout << "Receive: Cant open/write file " << out_path.c_str() << std::endl;
 					std::cout << "Receive: Make sure that gave me permissions to do it." << std::endl;
 					return;
 				}
-				os.write(data, strlen(data));
+				os << data;
+				//os.write(data, strlen(data));
 				os.close();
 				std::cout << "Receive: successful data store in " << out_path << std::endl;
 				std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
@@ -146,12 +150,15 @@ namespace DataFrame
 
 		static void Send(int c_socket, std::string in_path, void* send_buffer, const size_t __max_size)
 		{
-			std::ifstream is(in_path.c_str(), std::ios::binary);
+			std::ifstream is(in_path.c_str(), std::ios::in|std::ios::binary|std::ios::ate);
 
 			if(is.is_open()) {
+				is.seekg (0, std::ios::beg);
 
 				std::vector<char> _file_buffer((std::istreambuf_iterator<char>(is)), (std::istreambuf_iterator<char>()));
 				is.close();
+
+				std::cout << _file_buffer.data();
 
 				long _buffer_pos = 0;
 				while(_buffer_pos < _file_buffer.size()){
@@ -174,7 +181,7 @@ namespace DataFrame
 					frame.chksum = htons(checksum16);
 					memcpy(send_buffer, &frame, FR_ST_SIZE_PAD);
 
-					std::cout << *(char *)send_buffer << std::endl;
+					std::cout << (char *)send_buffer << std::endl;
 
 					while (send( c_socket, send_buffer, size, 0 ) == -1){
 						std::cout << "Send: Fail to send data (socket " << c_socket << "). Trying again in 3 sec..." << std::endl;
@@ -183,6 +190,8 @@ namespace DataFrame
 
 					_buffer_pos += buffer_length;
 				}
+			} else {
+				std::cout << "Send: cant open " << in_path.c_str() << ". Can i have permission to do it?" << std::endl;
 			}
 		}
 	};
