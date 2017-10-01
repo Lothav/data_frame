@@ -33,12 +33,19 @@ namespace DataFrame
 
         virtual ~Socket()
         {
-            _receive.join();
-            close(_socket_recv);
-            _send.join();
+			_receive.detach();
+			_send.detach();
+			close(_socket_recv);
             close(_socket_sender);
-			if(_buffer != nullptr) free(_buffer);
-        }
+			if(_recv_buffer != nullptr) {
+				free(_recv_buffer);
+				_recv_buffer = nullptr;
+			}
+			if(_send_buffer != nullptr){
+				free(_send_buffer);
+				_send_buffer = nullptr;
+			}
+		}
 
         std::vector<std::string> params;
 
@@ -49,7 +56,9 @@ namespace DataFrame
         std::thread _receive;
         std::thread _send;
 
-		void * _buffer = nullptr;
+		void * _send_buffer = nullptr;
+		void * _recv_buffer = nullptr;
+
 
 		const size_t __max_size = static_cast<size_t>(pow(2, 16)-1);
 
@@ -62,11 +71,11 @@ namespace DataFrame
 
         void communicate(int _socket)
         {
-            int counter;
+			_recv_buffer = malloc(__max_size+FR_ST_SIZE_PAD);
+			_send_buffer = malloc(__max_size+FR_ST_SIZE_PAD);
 
-			_buffer = malloc(__max_size);
-			_receive = std::thread(DataFrame::Socket::Receive, _socket, params[2], _buffer, __max_size);
-            _send 	 = std::thread(DataFrame::Socket::Send, _socket, params[1], __max_size);
+			_receive 	 = std::thread(DataFrame::Socket::Receive, _socket, params[2], _recv_buffer, __max_size);
+            _send 	 	 = std::thread(DataFrame::Socket::Send,    _socket, params[1], _send_buffer, __max_size);
         }
 
         static void Receive(int c_socket, std::string out_path, void* buffer, const size_t __max_size)
@@ -136,15 +145,14 @@ namespace DataFrame
 			}
         }
 
-        static void Send(int c_socket, std::string in_path, const size_t __max_size)
+        static void Send(int c_socket, std::string in_path, void* send_buffer, const size_t __max_size)
         {
-            std::ifstream is;
-            is.open(in_path.c_str(), std::ios::binary);
+            std::ifstream is(in_path.c_str(), std::ios::binary);
 
             if(is.is_open()) {
+				is.seekg(0, std::ios::end);
 
-                char* _file_buffer = new char (__max_size+1);
-				void* send_buffer  = malloc(__max_size+FR_ST_SIZE_PAD);
+            	char* _file_buffer = new char (__max_size+1);
 
 				while((is.rdstate() & std::ios::eofbit) != std::ios::eofbit) {
 					is.read(_file_buffer, __max_size);
@@ -172,7 +180,7 @@ namespace DataFrame
 					}
 				}
 				delete[] _file_buffer;
-                //free(send_buffer);
+				is.close();
             }
         }
 

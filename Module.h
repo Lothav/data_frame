@@ -31,7 +31,7 @@ namespace DataFrame
 
 		~Module()
 		{
-
+			std::cout<<"killing module"<<std::endl;
 		}
 
 	private:
