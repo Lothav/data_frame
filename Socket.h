@@ -121,7 +121,7 @@ namespace DataFrame
                     // Get data from buffer
                     size_t data_size = static_cast<size_t>(rec_size-(_pad_data_found+FR_ST_SIZE_PAD));
                     char data[ data_size+1 ];
-                    memcpy(data, ((uint8_t *)buffer.data())+FR_ST_SIZE_PAD+_pad_data_found, data_size);
+                    memcpy(data, buffer.data()+FR_ST_SIZE_PAD+_pad_data_found, data_size);
 
                     os.write(data, data_size);
                     std::cout << "Receive: successful data store in output buffer." << std::endl;
@@ -164,9 +164,9 @@ namespace DataFrame
                     size_t size = static_cast<size_t>(FR_ST_SIZE_PAD + buffer_length);
 
                     memcpy(send_buffer.data(), &frame, FR_ST_SIZE_PAD);
-                    memcpy(((uint8_t *)send_buffer.data())+FR_ST_SIZE_PAD, &_file_buf[_buffer_pos], buffer_length);
+                    memcpy(send_buffer.data()+FR_ST_SIZE_PAD, &_file_buf[_buffer_pos], buffer_length);
 
-                    uint16_t checksum16 = Utils::ip_checksum(send_buffer.data(), size);
+                    uint16_t checksum16 = Utils::ip_checksum(send_buffer.data(), frame.length+FR_ST_SIZE_PAD);
                     frame.chksum = htons(checksum16);
                     memcpy(send_buffer.data(), &frame, FR_ST_SIZE_PAD);
 

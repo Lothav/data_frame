@@ -75,20 +75,18 @@ namespace DataFrame
 			struct Frame header = {};
 			while(_pad+FR_ST_SIZE_PAD < size) {
 				memcpy(&header, buffer.data()+(_pad), FR_ST_SIZE_PAD);
-				int _pointer_pos = Utils::checkHeader(header, buffer, size);
-				if(0 == _pointer_pos) return _pad;
-                _pad++;
+                if(Utils::checkHeader(header, buffer, _pad)) return _pad;
+                _pad ++;
 			}
 			return -1;
 		}
 
-		static int checkHeader(struct Frame header, std::vector<char> buffer, ssize_t rec_size)
+		static const bool checkHeader(struct Frame header, std::vector<char> buffer, int _pad)
 		{
-			if(ntohl(header.__sync_1) != FR_SYNC_EVAL) return 4;
-			if(ntohl(header.__sync_2) != FR_SYNC_EVAL) return 8;
-			if(header.length == 0) return 10;
-			if(!Utils::checkChecksum(buffer.data(), header, rec_size)) return 12;
-			return 0;
+            return  ntohl( header.__sync_1 ) == FR_SYNC_EVAL &&
+                    ntohl( header.__sync_2 ) == FR_SYNC_EVAL &&
+                    header.length != 0 &&
+                    Utils::checkChecksum( buffer.data()+_pad, header, FR_ST_SIZE_PAD+header.length );
 		}
 
 		static const bool checkReceiveSize(ssize_t rec_size, int c_socket)
@@ -141,7 +139,7 @@ namespace DataFrame
 			memset(((uint8_t *)buffer)+FR_CHECKSUM_OFFSET, 0, FR_CHECKSUM_SIZE);
 
 			// calc checksum
-			uint16_t checksum16 = Utils::ip_checksum(buffer, rec_size);
+			uint16_t checksum16 = Utils::ip_checksum(buffer, static_cast<size_t>(rec_size));
 			return checksum16 == ntohs(header.chksum);
 		}
 
