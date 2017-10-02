@@ -35,7 +35,7 @@ namespace DataFrame
 		{
 			close(_socket_recv);
 			close(_socket_sender);
-			std::cout << " Sockets closed..."<< std::endl;
+			std::cout << "\tSockets closed..."<< std::endl;
 
 			if(_thr_receive.joinable()) {
 				_thr_receive.join();
@@ -43,6 +43,7 @@ namespace DataFrame
 			if(_thr_send.joinable()) {
 				_thr_send.join();
 			}
+			std::cout << "\tThreads joined..."<< std::endl;
 
 			if(_recv_buffer != nullptr) {
 				free(_recv_buffer);
@@ -52,10 +53,10 @@ namespace DataFrame
 				free(_send_buffer);
 				_send_buffer = nullptr;
 			}
-			std::cout << " Memory has been cleaned..."<< std::endl;
+			std::cout << "\tMemory has been cleaned..."<< std::endl;
 
 			_output_file.close();
-			std::cout << " " << params[2] << " closed."<< std::endl;
+			std::cout << "\t" << params[2] << " closed."<< std::endl;
 		}
 
 		std::vector<std::string> params;
@@ -173,6 +174,7 @@ namespace DataFrame
 				while(_buffer_pos < size_file){
 
 					size_t buffer_length = static_cast<size_t>( std::min(size_file, __max_size) );
+					buffer_length = ((_buffer_pos+buffer_length) > size_file ? size_file - _buffer_pos : buffer_length);
 
 					struct Frame frame  = {};
 					frame.__sync_1 	    = htonl(FR_SYNC_EVAL);
@@ -184,7 +186,7 @@ namespace DataFrame
 					size_t size = static_cast<size_t>(FR_ST_SIZE_PAD + buffer_length);
 
 					memcpy(send_buffer.data(), &frame, FR_ST_SIZE_PAD);
-					memcpy(((uint8_t *)send_buffer.data())+FR_ST_SIZE_PAD, &_file_buf[_buffer_pos], ((_buffer_pos+buffer_length) > size_file ? size_file - _buffer_pos : buffer_length));
+					memcpy(((uint8_t *)send_buffer.data())+FR_ST_SIZE_PAD, &_file_buf[_buffer_pos], buffer_length);
 
 					uint16_t checksum16 = Utils::ip_checksum(send_buffer.data(), size);
 					frame.chksum = htons(checksum16);
