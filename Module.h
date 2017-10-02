@@ -24,17 +24,16 @@ void handleSignal(int s)
 		std::cout << std::endl << "Destroying Sender..." << std::endl;
 		sender->_thr_receive.detach();
 		sender->_thr_send.detach();
-
-		sender->_thr_receive.join();
-		sender->_thr_send.join();
+		if(sender->_thr_receive.joinable()) sender->_thr_receive.join();
+		if(sender->_thr_send.joinable()) sender->_thr_send.join();
 	}
 	if(receiver != nullptr) {
 		std::cout<< std::endl << "Destroying Receiver..." << std::endl;
 		receiver->_thr_receive.detach();
 		receiver->_thr_send.detach();
 
-		receiver->_thr_receive.join();
-		receiver->_thr_send.join();
+		if(receiver->_thr_receive.joinable()) receiver->_thr_receive.join();
+		if(receiver->_thr_send.joinable())   receiver->_thr_send.join();
 	}
 }
 
