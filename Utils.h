@@ -31,7 +31,9 @@ namespace DataFrame
 {
 	class Utils
 	{
+
 	public:
+
 		static uint16_t ip_checksum(void* vdata, size_t length) {
 			// Cast the data pointer to one that can be indexed.
 			char* data = (char *) vdata;
@@ -64,14 +66,54 @@ namespace DataFrame
 		}
 
 
-		static const bool checkChecksum(void* buffer, struct Frame header, ssize_t rec_size)
+		static const bool checkHeader(struct Frame header, std::vector<char> buffer, ssize_t rec_size)
 		{
-			// clear checksum field
-			memset(((uint8_t *)buffer)+FR_CHECKSUM_OFFSET, 0, FR_CHECKSUM_SIZE);
+			if(ntohl(header.__sync_1) != FR_SYNC_EVAL) {
+				std::cout << "Receive: first sync data failed. Discarding frame."<< std::endl;
+				std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
+				return false;
+			}
+			if(ntohl(header.__sync_2) != FR_SYNC_EVAL) {
+				std::cout << "Receive: second sync data failed. Discarding frame."<< std::endl;
+				std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
+				return false;
+			}
+			if(header.length == 0) {
+				std::cout << "Receive: header field 'length' eq zero. Discarding frame." << std::endl;
+				std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
+				return false;
+			}
+			if( !Utils::checkChecksum(buffer.data(), header, rec_size) ){
+				std::cout << "Receive: Fail checksum. Discarding frame." << std::endl;
+				std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
+				return false;
+			}
+			return true;
+		}
 
-			// calc checksum
-			uint16_t checksum16 = Utils::ip_checksum(buffer, rec_size);
-			return checksum16 == ntohs(header.chksum);
+		static const bool checkReceiveSize(ssize_t rec_size, int c_socket)
+		{
+			if(rec_size == -1) {
+				std::cout << "Receive: Fail to receive frame (socket " << c_socket << " (err: " << errno << ") is dead?)." << std::endl;
+				std::cout << "Receive: Trying again in 3 sec... Hit ctrl+c to cancel" << std::endl << std::endl;
+				sleep(3);
+				return false;
+			}
+
+			if(rec_size == 0) {
+				std::cout << "Receive: Received frame with 0B (socket " << c_socket << " is dead?)" << std::endl;
+				std::cout << "Receive: Trying again in 3 sec... Hit ctrl+c to cancel" << std::endl << std::endl;
+				sleep(3);
+				return false;
+			}
+
+			if(rec_size <= FR_ST_SIZE_PAD) {
+				std::cout << "Receive: Only header receive. There's no data." << std::endl;
+				std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel" << std::endl << std::endl;
+				return false;
+			}
+
+			return true;
 		}
 
 		void static prettyBytes(char* buf, ssize_t bytes)
@@ -84,13 +126,25 @@ namespace DataFrame
 				count /= 1024;
 			}
 			if (count - floor(count) == 0.0)
-				sprintf(buf, "%d %s", (int)count, suffixes[s]);
+				sprintf(buf, "%d%s", (int)count, suffixes[s]);
 			else
-				sprintf(buf, "%.1f %s", count, suffixes[s]);
+				sprintf(buf, "%.1f%s", count, suffixes[s]);
 		}
 
 	private:
+
 		Utils() {}
+
+		static const bool checkChecksum(void* buffer, struct Frame header, ssize_t rec_size)
+		{
+			// clear checksum field
+			memset(((uint8_t *)buffer)+FR_CHECKSUM_OFFSET, 0, FR_CHECKSUM_SIZE);
+
+			// calc checksum
+			uint16_t checksum16 = Utils::ip_checksum(buffer, rec_size);
+			return checksum16 == ntohs(header.chksum);
+		}
+
 	};
 }
 

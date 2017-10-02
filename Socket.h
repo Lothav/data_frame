@@ -68,7 +68,7 @@ namespace DataFrame
 		void * 			_send_buffer = nullptr;
 		void * 			_recv_buffer = nullptr;
 
-		const size_t 	__max_size = static_cast<size_t>(pow(2, 16)-2);
+		const size_t 	__max_size = static_cast<size_t>(pow(2, 16)-1);
 
 		std::ofstream 	_output_file;
 
@@ -88,6 +88,12 @@ namespace DataFrame
 			std::vector<char> _send_buffer (__max_size+FR_ST_SIZE_PAD);
 			_output_file.open (params[2], std::ios::binary);
 
+			if(!_output_file.is_open()) {
+				std::cout << "Receive: Cant open/write file " << params[2] << std::endl;
+				std::cout << "Receive: Make sure that gave me permissions to do it." << std::endl;
+				return;
+			}
+
 			_thr_receive 	 = std::thread(DataFrame::Socket::Receive, _socket, std::ref(_output_file), _recv_buffer, __max_size);
 			_thr_send 	 	 = std::thread(DataFrame::Socket::Send,    _socket, params[1], _send_buffer, __max_size);
 		}
@@ -101,23 +107,9 @@ namespace DataFrame
 				// Clear buffer
 				memset(buffer.data(), 0, __max_size+FR_ST_SIZE_PAD);
 
-				if((rec_size = recv(c_socket, buffer.data(), __max_size+FR_ST_SIZE_PAD, 0)) == -1) {
-					std::cout << "Receive: Fail to receive frame (socket " << c_socket << " (err: " << errno << ") is dead?)." << std::endl;
-					std::cout << "Receive: Trying again in 3 sec... Hit ctrl+c to cancel" << std::endl << std::endl;
-					sleep(3);
-					continue;
-				}
+				rec_size = recv(c_socket, buffer.data(), __max_size+FR_ST_SIZE_PAD, 0);
 
-				if(rec_size == 0) {
-					std::cout << "Receive: Received frame with 0B (socket " << c_socket << " is dead?)" << std::endl;
-					std::cout << "Receive: Trying again in 3 sec... Hit ctrl+c to cancel" << std::endl << std::endl;
-					sleep(3);
-					continue;
-				}
-
-				if(rec_size <= FR_ST_SIZE_PAD) {
-					std::cout << "Receive: Only header receive. There's no data." << std::endl;
-					std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel" << std::endl << std::endl;
+				if(!Utils::checkReceiveSize(rec_size, c_socket)) {
 					continue;
 				}
 
@@ -128,15 +120,7 @@ namespace DataFrame
 				struct Frame header = {};
 				memcpy(&header, buffer.data(), FR_ST_SIZE_PAD);
 
-				if(header.length == 0) {
-					std::cout << "Receive: header field 'length' eq zero. Discarding frame." << std::endl;
-					std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
-					continue;
-				}
-
-				if( !Utils::checkChecksum(buffer.data(), header, rec_size) ){
-					std::cout << "Receive: Fail checksum. Discarding frame." << std::endl;
-					std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
+				if(!Utils::checkHeader(header, buffer, rec_size)) {
 					continue;
 				}
 
@@ -145,13 +129,8 @@ namespace DataFrame
 				char data[ data_size+1 ];
 				memcpy(data, ((uint8_t *)buffer.data())+FR_ST_SIZE_PAD, data_size);
 
-				if(!os.is_open()) {
-					std::cout << "Receive: Cant open/write file "  << std::endl;
-					std::cout << "Receive: Make sure that gave me permissions to do it." << std::endl;
-					return;
-				}
 				os.write(data, data_size);
-				std::cout << "Receive: successful data store in " << std::endl;
+				std::cout << "Receive: successful data store in output buffer." << std::endl;
 				std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
 			}
 		}

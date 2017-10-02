@@ -25,9 +25,9 @@ namespace DataFrame
 
 		void run()
 		{
-			socklen_t 		clilen;
-			uint16_t 		p_number;
-			int 			sock, c_socket;
+			socklen_t 	clilen;
+			uint16_t 	p_number;
+			int 		sock, c_socket;
 
 			_socket_recv = socket(AF_INET, SOCK_STREAM, 0);
 			if (_socket_recv < 0) {
