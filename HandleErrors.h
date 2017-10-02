@@ -51,6 +51,26 @@ namespace DataFrame
         }
 
     };
+
+	void handleSignal(int s)
+	{
+		std::cout << std::endl << "Caught signal " << s << std::endl;
+		if(sender != nullptr) {
+			std::cout << std::endl << "Destroying Sender..." << std::endl;
+			sender->_thr_receive.detach();
+			sender->_thr_send.detach();
+			if(sender->_thr_receive.joinable()) sender->_thr_receive.join();
+			if(sender->_thr_send.joinable()) sender->_thr_send.join();
+		}
+		if(receiver != nullptr) {
+			std::cout<< std::endl << "Destroying Receiver..." << std::endl;
+			receiver->_thr_receive.detach();
+			receiver->_thr_send.detach();
+
+			if(receiver->_thr_receive.joinable()) receiver->_thr_receive.join();
+			if(receiver->_thr_send.joinable())   receiver->_thr_send.join();
+		}
+	}
 }
 
 #endif //DATA_FRAME_HANDLEERRORS_H

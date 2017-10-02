@@ -8,7 +8,6 @@
 #include <thread>
 #include <vector>
 #include <fstream>
-#include "HandleErrors.h"
 #include "Sender.h"
 #include "Receiver.h"
 
@@ -17,25 +16,7 @@
 DataFrame::Receiver* receiver = nullptr;
 DataFrame::Sender* sender = nullptr;
 
-void handleSignal(int s)
-{
-	std::cout << std::endl << "Caught signal " << s << std::endl;
-	if(sender != nullptr) {
-		std::cout << std::endl << "Destroying Sender..." << std::endl;
-		sender->_thr_receive.detach();
-		sender->_thr_send.detach();
-		if(sender->_thr_receive.joinable()) sender->_thr_receive.join();
-		if(sender->_thr_send.joinable()) sender->_thr_send.join();
-	}
-	if(receiver != nullptr) {
-		std::cout<< std::endl << "Destroying Receiver..." << std::endl;
-		receiver->_thr_receive.detach();
-		receiver->_thr_send.detach();
-
-		if(receiver->_thr_receive.joinable()) receiver->_thr_receive.join();
-		if(receiver->_thr_send.joinable())   receiver->_thr_send.join();
-	}
-}
+#include "HandleErrors.h"
 
 namespace DataFrame
 {
@@ -50,12 +31,11 @@ namespace DataFrame
 			for (short i = 0; i < size; i++) {
 				_params.params.push_back( std::string(params[i]) );
 			}
-			struct sigaction sigIntHandler;
 
-			sigIntHandler.sa_handler = handleSignal;
+			struct sigaction sigIntHandler;
+			sigIntHandler.sa_handler = DataFrame::handleSignal;
 			sigemptyset(&sigIntHandler.sa_mask);
 			sigIntHandler.sa_flags = 0;
-
 			sigaction(SIGINT, &sigIntHandler, NULL);
 		}
 
