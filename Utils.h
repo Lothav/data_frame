@@ -9,6 +9,10 @@
 #include <cstddef>
 #include <cstring>
 #include <netinet/in.h>
+#include <vector>
+#include <iostream>
+#include <cmath>
+#include <zconf.h>
 
 #define FR_CHECKSUM_OFFSET  8
 #define FR_CHECKSUM_SIZE    2
@@ -17,7 +21,7 @@
 #define	DF_SOCKET_TYPE_SENDER 	"ativo"
 
 #define FR_SYNC_EVAL 	    0xDCC023C2
-#define FR_ST_SIZE_PAD 	    112
+#define FR_ST_SIZE_PAD 	    14
 
 struct Frame {
 	uint32_t 	__sync_1;
@@ -65,30 +69,26 @@ namespace DataFrame
 			return htons(~acc);
 		}
 
-
-		static const bool checkHeader(struct Frame header, std::vector<char> buffer, ssize_t rec_size)
+		static int findValidHeader(std::vector<char> buffer, ssize_t size)
 		{
-			if(ntohl(header.__sync_1) != FR_SYNC_EVAL) {
-				std::cout << "Receive: first sync data failed. Discarding frame."<< std::endl;
-				std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
-				return false;
+			int _pad = 0;
+			struct Frame header = {};
+			while(_pad+FR_ST_SIZE_PAD < size) {
+				memcpy(&header, buffer.data()+(_pad), FR_ST_SIZE_PAD);
+				int _pointer_pos = Utils::checkHeader(header, buffer, size);
+				if(0 == _pointer_pos) return _pad;
+                _pad++;
 			}
-			if(ntohl(header.__sync_2) != FR_SYNC_EVAL) {
-				std::cout << "Receive: second sync data failed. Discarding frame."<< std::endl;
-				std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
-				return false;
-			}
-			if(header.length == 0) {
-				std::cout << "Receive: header field 'length' eq zero. Discarding frame." << std::endl;
-				std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
-				return false;
-			}
-			if( !Utils::checkChecksum(buffer.data(), header, rec_size) ){
-				std::cout << "Receive: Fail checksum. Discarding frame." << std::endl;
-				std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
-				return false;
-			}
-			return true;
+			return -1;
+		}
+
+		static int checkHeader(struct Frame header, std::vector<char> buffer, ssize_t rec_size)
+		{
+			if(ntohl(header.__sync_1) != FR_SYNC_EVAL) return 4;
+			if(ntohl(header.__sync_2) != FR_SYNC_EVAL) return 8;
+			if(header.length == 0) return 10;
+			if(!Utils::checkChecksum(buffer.data(), header, rec_size)) return 12;
+			return 0;
 		}
 
 		static const bool checkReceiveSize(ssize_t rec_size, int c_socket)
