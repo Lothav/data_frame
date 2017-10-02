@@ -45,6 +45,7 @@ namespace DataFrame
 				free(_send_buffer);
 				_send_buffer = nullptr;
 			}
+			os.close();
 		}
 
 		std::vector<std::string> params;
@@ -60,7 +61,7 @@ namespace DataFrame
 		void * _recv_buffer = nullptr;
 
 		const size_t __max_size = static_cast<size_t>(pow(2, 16)-2);
-
+		std::ofstream os;
 	protected:
 
 		int _socket_sender;
@@ -70,23 +71,24 @@ namespace DataFrame
 
 		void communicate(int _socket)
 		{
-			_recv_buffer = malloc(__max_size+FR_ST_SIZE_PAD);
-			_send_buffer = malloc(__max_size+FR_ST_SIZE_PAD);
+			std::vector<char> _recv_buffer (__max_size+FR_ST_SIZE_PAD);
+			std::vector<char> _send_buffer (__max_size+FR_ST_SIZE_PAD);
+			os.open (params[2], std::ios::binary);
 
-			_receive 	 = std::thread(DataFrame::Socket::Receive, _socket, params[2], _recv_buffer, __max_size);
+			_receive 	 = std::thread(DataFrame::Socket::Receive, _socket, std::ref(os), _recv_buffer, __max_size);
 			_send 	 	 = std::thread(DataFrame::Socket::Send,    _socket, params[1], _send_buffer, __max_size);
 		}
 
-		static void Receive(int c_socket, std::string out_path, void* buffer, const size_t __max_size)
+		static void Receive(int c_socket, std::ofstream& os, std::vector<char> buffer, const size_t __max_size)
 		{
 			ssize_t rec_size;
 
 			while(true) {
 
 				// Clear buffer
-				memset(buffer, 0, __max_size+FR_ST_SIZE_PAD);
+				memset(buffer.data(), 0, __max_size+FR_ST_SIZE_PAD);
 
-				if((rec_size = recv(c_socket, buffer, __max_size+FR_ST_SIZE_PAD, 0)) == -1) {
+				if((rec_size = recv(c_socket, buffer.data(), __max_size+FR_ST_SIZE_PAD, 0)) == -1) {
 					std::cout << "Receive: Fail to receive frame (socket " << c_socket << " (err: " << errno << ") is dead?)." << std::endl;
 					std::cout << "Receive: Trying again in 3 sec... Hit ctrl+c to cancel" << std::endl << std::endl;
 					sleep(3);
@@ -111,7 +113,7 @@ namespace DataFrame
 				std::cout << "Receive: receiving frame with " << bytes_size << " size."<< std::endl;
 
 				struct Frame header = {};
-				memcpy(&header, buffer, FR_ST_SIZE_PAD);
+				memcpy(&header, buffer.data(), FR_ST_SIZE_PAD);
 
 				if(header.length == 0) {
 					std::cout << "Receive: header field 'length' eq zero. Discarding frame." << std::endl;
@@ -119,7 +121,7 @@ namespace DataFrame
 					continue;
 				}
 
-				if( !Utils::checkChecksum(buffer, header, rec_size) ){
+				if( !Utils::checkChecksum(buffer.data(), header, rec_size) ){
 					std::cout << "Receive: Fail checksum. Discarding frame." << std::endl;
 					std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
 					continue;
@@ -128,42 +130,42 @@ namespace DataFrame
 				// Get data from buffer
 				size_t data_size = static_cast<size_t>(rec_size-FR_ST_SIZE_PAD);
 				char data[ data_size+1 ];
-				memcpy(data, ((uint8_t *)buffer)+FR_ST_SIZE_PAD, data_size);
+				memcpy(data, ((uint8_t *)buffer.data())+FR_ST_SIZE_PAD, data_size);
 
 				// Write on file
-
 				std::cout << data;
 
-				std::ofstream os (out_path.c_str(), std::ios::binary | std::ios::app);
 				if(!os.is_open()) {
-					std::cout << "Receive: Cant open/write file " << out_path.c_str() << std::endl;
+					std::cout << "Receive: Cant open/write file "  << std::endl;
 					std::cout << "Receive: Make sure that gave me permissions to do it." << std::endl;
 					return;
 				}
-				os << data;
-				//os.write(data, strlen(data));
-				os.close();
-				std::cout << "Receive: successful data store in " << out_path << std::endl;
+				os.write(data, data_size);
+				std::cout << "Receive: successful data store in " << std::endl;
 				std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
 			}
 		}
 
-		static void Send(int c_socket, std::string in_path, void* send_buffer, const size_t __max_size)
+		static void Send(int c_socket, std::string in_path, std::vector<char> send_buffer, const size_t __max_size)
 		{
-			std::ifstream is(in_path.c_str(), std::ios::in|std::ios::binary|std::ios::ate);
+			std::ifstream is(in_path.c_str(), std::ios::binary);
 
 			if(is.is_open()) {
+
+				is.seekg (0, std::ios::end);
+				size_t size_file = static_cast<size_t >(is.tellg());
 				is.seekg (0, std::ios::beg);
 
-				std::vector<char> _file_buffer((std::istreambuf_iterator<char>(is)), (std::istreambuf_iterator<char>()));
+				std::vector<char> _file_buf (size_file);
+				is.read(_file_buf.data(), size_file);
 				is.close();
 
-				std::cout << _file_buffer.data();
+				std::cout << _file_buf.size() << " " << size_file << std::endl;
 
 				long _buffer_pos = 0;
-				while(_buffer_pos < _file_buffer.size()){
+				while(_buffer_pos < size_file){
 
-					size_t buffer_length = static_cast<size_t>( std::min(_file_buffer.size(), __max_size) );
+					size_t buffer_length = static_cast<size_t>( std::min(size_file, __max_size) );
 
 					struct Frame frame  = {};
 					frame.__sync_1 	    = htonl(FR_SYNC_EVAL);
@@ -174,16 +176,16 @@ namespace DataFrame
 
 					size_t size = static_cast<size_t>(FR_ST_SIZE_PAD + buffer_length);
 
-					memcpy(send_buffer, &frame, FR_ST_SIZE_PAD);
-					memcpy(((uint8_t *)send_buffer)+FR_ST_SIZE_PAD, _file_buffer.data()+_buffer_pos, buffer_length);
+					memcpy(send_buffer.data(), &frame, FR_ST_SIZE_PAD);
+					memcpy(((uint8_t *)send_buffer.data())+FR_ST_SIZE_PAD, &_file_buf[_buffer_pos], ((_buffer_pos+buffer_length) > size_file ? size_file - _buffer_pos : buffer_length));
 
-					uint16_t checksum16 = Utils::ip_checksum(send_buffer, size);
+					uint16_t checksum16 = Utils::ip_checksum(send_buffer.data(), size);
 					frame.chksum = htons(checksum16);
-					memcpy(send_buffer, &frame, FR_ST_SIZE_PAD);
+					memcpy(send_buffer.data(), &frame, FR_ST_SIZE_PAD);
 
-					std::cout << (char *)send_buffer << std::endl;
+					std::cout << (send_buffer.data()) << std::endl;
 
-					while (send( c_socket, send_buffer, size, 0 ) == -1){
+					while (send( c_socket, send_buffer.data(), size, 0 ) == -1){
 						std::cout << "Send: Fail to send data (socket " << c_socket << "). Trying again in 3 sec..." << std::endl;
 						sleep(3);
 					}
