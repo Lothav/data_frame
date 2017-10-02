@@ -56,10 +56,8 @@ namespace DataFrame
 
 			c_socket = accept(_socket_recv, (struct sockaddr *)&cli_addr, &clilen);
 			this->communicate(c_socket);
-			sleep(50);
-			std::cout <<"byeee have a great time" << std::endl;
+			pause();
 		}
-
 	};
 }
 #endif //DATA_FRAME_RECEIVER_H

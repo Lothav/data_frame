@@ -19,6 +19,8 @@ namespace DataFrame
 			this->params = params;
 		}
 
+		~Sender() {}
+
 		void run()
 		{
 			_socket_sender = socket(AF_INET, SOCK_STREAM, 0);
@@ -39,8 +41,7 @@ namespace DataFrame
 			}
 
 			this->communicate(_socket_sender);
-			sleep(50);
-			std::cout <<"byeee have a great time" << std::endl;
+			pause();
 		}
 
 	};

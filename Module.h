@@ -14,6 +14,30 @@
 
 #define FR_PARAMS_N 6
 
+DataFrame::Receiver* receiver = nullptr;
+DataFrame::Sender* sender = nullptr;
+
+void handleSignal(int s)
+{
+	std::cout << std::endl << "Caught signal " << s << std::endl;
+	if(sender != nullptr) {
+		std::cout << std::endl << "Destroying Sender..." << std::endl;
+		sender->_thr_receive.detach();
+		sender->_thr_send.detach();
+
+		sender->_thr_receive.join();
+		sender->_thr_send.join();
+	}
+	if(receiver != nullptr) {
+		std::cout<< std::endl << "Destroying Receiver..." << std::endl;
+		receiver->_thr_receive.detach();
+		receiver->_thr_send.detach();
+
+		receiver->_thr_receive.join();
+		receiver->_thr_send.join();
+	}
+}
+
 namespace DataFrame
 {
 	class Module : public HandleErrors
@@ -27,6 +51,13 @@ namespace DataFrame
 			for (short i = 0; i < size; i++) {
 				_params.params.push_back( std::string(params[i]) );
 			}
+			struct sigaction sigIntHandler;
+
+			sigIntHandler.sa_handler = handleSignal;
+			sigemptyset(&sigIntHandler.sa_mask);
+			sigIntHandler.sa_flags = 0;
+
+			sigaction(SIGINT, &sigIntHandler, NULL);
 		}
 
 		~Module() {}
@@ -45,15 +76,18 @@ namespace DataFrame
 			this->checkParams();
 			try {
 				if(_params.params[5] == DF_SOCKET_TYPE_RECEIVER){
-					std::unique_ptr<Receiver> instance (new Receiver(_params.params));
-					instance.get()->run();
+					receiver = new Receiver(_params.params);
+					receiver->run();
 				} else {
-					std::unique_ptr<Sender> instance (new Sender(_params.params));
-					instance.get()->run();
+					sender = new Sender(_params.params);
+					sender->run();
 				}
 			} catch (std::runtime_error &ex) {
 				std::cerr << ex.what();
 			}
+
+			delete sender;
+			delete receiver;
 		}
 
 	private:

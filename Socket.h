@@ -33,10 +33,17 @@ namespace DataFrame
 
 		virtual ~Socket()
 		{
-			_receive.detach();
-			_send.detach();
 			close(_socket_recv);
 			close(_socket_sender);
+			std::cout << " Sockets closed..."<< std::endl;
+
+			if(_thr_receive.joinable()) {
+				_thr_receive.join();
+			}
+			if(_thr_send.joinable()) {
+				_thr_send.join();
+			}
+
 			if(_recv_buffer != nullptr) {
 				free(_recv_buffer);
 				_recv_buffer = nullptr;
@@ -45,23 +52,25 @@ namespace DataFrame
 				free(_send_buffer);
 				_send_buffer = nullptr;
 			}
-			os.close();
+			std::cout << " Memory has been cleaned..."<< std::endl;
+
+			_output_file.close();
+			std::cout << " " << params[2] << " closed."<< std::endl;
 		}
 
 		std::vector<std::string> params;
 
 	private:
 
-		std::string _mode;
+		std::string 	_mode;
 
-		std::thread _receive;
-		std::thread _send;
+		void * 			_send_buffer = nullptr;
+		void * 			_recv_buffer = nullptr;
 
-		void * _send_buffer = nullptr;
-		void * _recv_buffer = nullptr;
+		const size_t 	__max_size = static_cast<size_t>(pow(2, 16)-2);
 
-		const size_t __max_size = static_cast<size_t>(pow(2, 16)-2);
-		std::ofstream os;
+		std::ofstream 	_output_file;
+
 	protected:
 
 		int _socket_sender;
@@ -69,14 +78,17 @@ namespace DataFrame
 
 	public:
 
+		std::thread 	_thr_receive;
+		std::thread 	_thr_send;
+
 		void communicate(int _socket)
 		{
 			std::vector<char> _recv_buffer (__max_size+FR_ST_SIZE_PAD);
 			std::vector<char> _send_buffer (__max_size+FR_ST_SIZE_PAD);
-			os.open (params[2], std::ios::binary);
+			_output_file.open (params[2], std::ios::binary);
 
-			_receive 	 = std::thread(DataFrame::Socket::Receive, _socket, std::ref(os), _recv_buffer, __max_size);
-			_send 	 	 = std::thread(DataFrame::Socket::Send,    _socket, params[1], _send_buffer, __max_size);
+			_thr_receive 	 = std::thread(DataFrame::Socket::Receive, _socket, std::ref(_output_file), _recv_buffer, __max_size);
+			_thr_send 	 	 = std::thread(DataFrame::Socket::Send,    _socket, params[1], _send_buffer, __max_size);
 		}
 
 		static void Receive(int c_socket, std::ofstream& os, std::vector<char> buffer, const size_t __max_size)
@@ -132,9 +144,6 @@ namespace DataFrame
 				char data[ data_size+1 ];
 				memcpy(data, ((uint8_t *)buffer.data())+FR_ST_SIZE_PAD, data_size);
 
-				// Write on file
-				std::cout << data;
-
 				if(!os.is_open()) {
 					std::cout << "Receive: Cant open/write file "  << std::endl;
 					std::cout << "Receive: Make sure that gave me permissions to do it." << std::endl;
@@ -160,8 +169,6 @@ namespace DataFrame
 				is.read(_file_buf.data(), size_file);
 				is.close();
 
-				std::cout << _file_buf.size() << " " << size_file << std::endl;
-
 				long _buffer_pos = 0;
 				while(_buffer_pos < size_file){
 
@@ -182,8 +189,6 @@ namespace DataFrame
 					uint16_t checksum16 = Utils::ip_checksum(send_buffer.data(), size);
 					frame.chksum = htons(checksum16);
 					memcpy(send_buffer.data(), &frame, FR_ST_SIZE_PAD);
-
-					std::cout << (send_buffer.data()) << std::endl;
 
 					while (send( c_socket, send_buffer.data(), size, 0 ) == -1){
 						std::cout << "Send: Fail to send data (socket " << c_socket << "). Trying again in 3 sec..." << std::endl;

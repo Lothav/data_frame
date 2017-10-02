@@ -1,6 +1,8 @@
 #ifndef DATA_FRAME_HANDLEERRORS_H
 #define DATA_FRAME_HANDLEERRORS_H
 
+#include <signal.h>
+
 enum ErrorsType {
     HANDLE_ERROR_TYPE_ERR_MSG       			= 0x1 << 0,
     HANDLE_ERROR_TYPE_PARAMS_SIZE   			= 0x1 << 1,
@@ -12,7 +14,7 @@ enum ErrorsType {
 
 namespace DataFrame
 {
-    class HandleErrors
+	class HandleErrors
     {
 
 	public:
@@ -50,6 +52,5 @@ namespace DataFrame
 
     };
 }
-
 
 #endif //DATA_FRAME_HANDLEERRORS_H
