@@ -2,14 +2,13 @@
 #define DATA_FRAME_HANDLEERRORS_H
 
 #include <signal.h>
+#include <iostream>
 
 enum ErrorsType {
     HANDLE_ERROR_TYPE_ERR_MSG       			= 0x1 << 0,
     HANDLE_ERROR_TYPE_PARAMS_SIZE   			= 0x1 << 1,
 	HANDLE_ERROR_TYPE_THROW_RUNTIME_ERROR       = 0x1 << 2,
     HANDLE_ERROR_TYPE_MODE_NOT_MATCH            = 0x1 << 3,
-    HANDLE_ERRSOR_TYPE              			= 0x1 << 4,
-    HANDLE_ERRSOR_FTYPE             			= 0x1 << 5
 };
 
 namespace DataFrame

@@ -85,8 +85,8 @@ namespace DataFrame
 		{
             return  ntohl( header.__sync_1 ) == FR_SYNC_EVAL &&
                     ntohl( header.__sync_2 ) == FR_SYNC_EVAL &&
-                    header.length != 0 &&
-                    Utils::checkChecksum( buffer.data()+_pad, header, FR_ST_SIZE_PAD+header.length );
+                    ntohs( header.length ) != 0 &&
+                    Utils::checkChecksum( buffer.data()+_pad, header, FR_ST_SIZE_PAD+ntohs(header.length) );
 		}
 
 		static const bool checkReceiveSize(ssize_t rec_size, int c_socket)
@@ -138,7 +138,9 @@ namespace DataFrame
 			// clear checksum field
 			memset(((uint8_t *)buffer)+FR_CHECKSUM_OFFSET, 0, FR_CHECKSUM_SIZE);
 			// calc checksum
-			return header.chksum == Utils::ip_checksum(buffer, static_cast<size_t>(rec_size));
+            uint16_t _checksum = Utils::ip_checksum(buffer, static_cast<size_t>(rec_size));
+            // compare checksum
+			return header.chksum == _checksum;
 		}
 
 	};
