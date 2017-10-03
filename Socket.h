@@ -109,7 +109,7 @@ namespace DataFrame
                 // Receive data
                 rec_size = recv(c_socket, buffer.data(), __max_size+FR_ST_SIZE_PAD, 0);
                 // Check receive size is valid
-                if(!Utils::checkReceiveSize(rec_size, c_socket))  continue;
+                if(!Utils::checkReceiveSize(rec_size, c_socket)) continue;
                 // Check if frame has valid header
                 int _pad_data_found = Utils::findValidHeader(buffer, rec_size);
                 if(_pad_data_found != -1) {
@@ -127,7 +127,7 @@ namespace DataFrame
                     std::cout << "Receive: successful data store in output buffer." << std::endl;
                     std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
                 } else {
-                    std::cout << "Receive: header is not valid! Discarding package" << std::endl << std::endl;
+                    std::cout << "Receive: header is not valid." << std::endl;
                     std::cout << "Receive: trying to receive more data... Hit ctrl+c to cancel." << std::endl << std::endl;
                     break;
                 }
@@ -163,11 +163,10 @@ namespace DataFrame
 
                     size_t size = static_cast<size_t>(FR_ST_SIZE_PAD + buffer_length);
 
+                    memset(send_buffer.data(), 0, __max_size+FR_ST_SIZE_PAD);
                     memcpy(send_buffer.data(), &frame, FR_ST_SIZE_PAD);
                     memcpy(send_buffer.data()+FR_ST_SIZE_PAD, &_file_buf[_buffer_pos], buffer_length);
-
-                    uint16_t checksum16 = Utils::ip_checksum(send_buffer.data(), frame.length+FR_ST_SIZE_PAD);
-                    frame.chksum = htons(checksum16);
+                    frame.chksum = Utils::ip_checksum(send_buffer.data(), size);
                     memcpy(send_buffer.data(), &frame, FR_ST_SIZE_PAD);
 
                     while (send( c_socket, send_buffer.data(), size, 0 ) == -1){

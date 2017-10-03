@@ -137,10 +137,8 @@ namespace DataFrame
 		{
 			// clear checksum field
 			memset(((uint8_t *)buffer)+FR_CHECKSUM_OFFSET, 0, FR_CHECKSUM_SIZE);
-
 			// calc checksum
-			uint16_t checksum16 = Utils::ip_checksum(buffer, static_cast<size_t>(rec_size));
-			return checksum16 == ntohs(header.chksum);
+			return header.chksum == Utils::ip_checksum(buffer, static_cast<size_t>(rec_size));
 		}
 
 	};
